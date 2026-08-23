@@ -64,8 +64,8 @@
       <h2 class="card-title with-margin">2. Settings</h2>
       <div class="settings-grid">
         <label class="field">
-          <span class="field-label">OpenAI API key <span class="req">required</span></span>
-          <input id="apiKey" type="password" placeholder="sk-…" autocomplete="off">
+          <span class="field-label">Claude API key <span class="req">required</span></span>
+          <input id="apiKey" type="password" placeholder="sk-ant-…" autocomplete="off">
         </label>
         <label class="field checkbox-field">
           <input id="rememberKey" type="checkbox">
@@ -74,12 +74,11 @@
 
         <label class="field">
           <span class="field-label">Model</span>
-          <input id="modelInput" list="modelList" value="gpt-4o" placeholder="gpt-4o">
+          <input id="modelInput" list="modelList" value="claude-sonnet-5" placeholder="claude-sonnet-5">
           <datalist id="modelList">
-            <option value="gpt-4o">
-            <option value="gpt-4o-mini">
-            <option value="gpt-4.1">
-            <option value="gpt-4.1-mini">
+            <option value="claude-sonnet-5">
+            <option value="claude-opus-5">
+            <option value="claude-haiku-4-5-20251001">
           </datalist>
         </label>
 
@@ -140,8 +139,8 @@
       </div>
       <div class="how-step">
         <div class="how-num">2</div>
-        <h3>Your key talks directly to OpenAI</h3>
-        <p>The extracted text (plus the reformatting rulebook) is sent straight from your browser to OpenAI's API using your own key. No server of ours ever sees your files or your key.</p>
+        <h3>Your key talks directly to Anthropic</h3>
+        <p>The extracted text (plus the reformatting rulebook) is sent straight from your browser to Anthropic's Claude API using your own key. No server of ours ever sees your files or your key.</p>
       </div>
       <div class="how-step">
         <div class="how-num">3</div>
@@ -151,7 +150,7 @@
     </div>
     <p class="privacy-note">
       This is a static site with no backend. It cannot see your API key or your files — they never pass through any server we control.
-      Standard OpenAI API usage charges from your own account apply per reformat.
+      Standard Anthropic API usage charges from your own account apply per reformat.
     </p>
   </section>
 

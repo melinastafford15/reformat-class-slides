@@ -1,9 +1,10 @@
 /* Coherence — turns scattered slides/docs into one unified study guide.
    Everything runs client-side. Your API key and files go straight from
-   your browser to OpenAI; nothing passes through any server we run. */
+   your browser to Anthropic; nothing passes through any server we run. */
 
 const MAX_SOURCE_CHARS = 150000; // soft cap so one huge upload can't blow the context window
-const KEY_STORAGE = 'coherence_openai_key';
+const MAX_OUTPUT_TOKENS = 8192;
+const KEY_STORAGE = 'coherence_claude_key';
 const REMEMBER_STORAGE = 'coherence_remember_key';
 const PREFS_STORAGE = 'coherence_prefs';
 
@@ -201,32 +202,36 @@ ${combinedText}`;
 
   const parts = [{ type: 'text', text }];
   for (const dataUrl of images) {
-    parts.push({ type: 'image_url', image_url: { url: dataUrl } });
+    const match = /^data:([^;]+);base64,(.*)$/.exec(dataUrl);
+    if (!match) continue;
+    parts.push({ type: 'image', source: { type: 'base64', media_type: match[1], data: match[2] } });
   }
   return parts;
 }
 
-async function callOpenAI({ apiKey, model, systemPrompt, userContent, onProgress }) {
-  const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+async function callClaude({ apiKey, model, systemPrompt, userContent, onProgress }) {
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
     },
     body: JSON.stringify({
       model,
       stream: true,
       temperature: 0.3,
-      max_tokens: 16000,
+      max_tokens: MAX_OUTPUT_TOKENS,
+      system: systemPrompt,
       messages: [
-        { role: 'system', content: systemPrompt },
         { role: 'user', content: userContent }
       ]
     })
   });
 
   if (!resp.ok || !resp.body) {
-    let msg = `OpenAI API error (HTTP ${resp.status})`;
+    let msg = `Claude API error (HTTP ${resp.status})`;
     try {
       const errJson = await resp.json();
       if (errJson && errJson.error && errJson.error.message) msg = errJson.error.message;
@@ -249,15 +254,19 @@ async function callOpenAI({ apiKey, model, systemPrompt, userContent, onProgress
       const trimmed = line.trim();
       if (!trimmed.startsWith('data:')) continue;
       const data = trimmed.slice(5).trim();
-      if (data === '[DONE]') continue;
+      if (!data) continue;
+      let json;
       try {
-        const json = JSON.parse(data);
-        const delta = json.choices && json.choices[0] && json.choices[0].delta && json.choices[0].delta.content;
-        if (delta) {
-          full += delta;
-          if (onProgress) onProgress(full.length);
-        }
-      } catch (e) { /* partial chunk, ignore */ }
+        json = JSON.parse(data);
+      } catch (e) {
+        continue; // partial chunk, ignore
+      }
+      if (json.type === 'content_block_delta' && json.delta && json.delta.type === 'text_delta') {
+        full += json.delta.text;
+        if (onProgress) onProgress(full.length);
+      } else if (json.type === 'error') {
+        throw new Error((json.error && json.error.message) || 'Claude API stream error');
+      }
     }
   }
   return full;
@@ -293,7 +302,7 @@ async function generate() {
   if (generating) return;
 
   const apiKey = apiKeyEl.value.trim();
-  const model = modelEl.value.trim() || 'gpt-4o';
+  const model = modelEl.value.trim() || 'claude-sonnet-5';
   const readyFiles = files.filter(f => f.status === 'done');
   const failedFiles = files.filter(f => f.status === 'error');
   const pendingFiles = files.filter(f => f.status === 'pending');
@@ -302,7 +311,7 @@ async function generate() {
   const warnings = [];
   failedFiles.forEach(f => warnings.push(`Skipped "${f.name}" — ${f.error}`));
 
-  if (!apiKey) { setStatus('Enter your OpenAI API key first.', 'error'); apiKeyEl.focus(); return; }
+  if (!apiKey) { setStatus('Enter your Claude API key first.', 'error'); apiKeyEl.focus(); return; }
   if (pendingFiles.length) { setStatus('Still reading uploaded files — try again in a moment.', 'error'); return; }
   if (readyFiles.length === 0 && !pasted) { setStatus('Upload at least one file or paste some material first.', 'error'); return; }
 
@@ -319,8 +328,8 @@ async function generate() {
     combinedText = combinedText.slice(0, MAX_SOURCE_CHARS);
     warnings.push(`Source material was long and got truncated to ~${MAX_SOURCE_CHARS.toLocaleString()} characters to stay within a safe context size. Consider splitting large uploads into one unit at a time.`);
   }
-  if (images.length > 0 && !/gpt-4o|vision|4\.1|omni/i.test(model)) {
-    warnings.push(`Model "${model}" may not support image input — images will likely be ignored. Try "gpt-4o" if you need images read.`);
+  if (images.length > 0 && /haiku-3(?!\.5)/i.test(model)) {
+    warnings.push(`Model "${model}" may have limited image support — try "claude-sonnet-5" if images aren't read correctly.`);
   }
 
   setWarnings(warnings);
@@ -342,7 +351,7 @@ async function generate() {
 
     setStatus('Generating your unified guide… this can take a minute for large decks.', 'busy');
 
-    const raw = await callOpenAI({
+    const raw = await callClaude({
       apiKey, model, systemPrompt, userContent,
       onProgress: (len) => setStatus(`Generating your unified guide… ${len.toLocaleString()} characters so far.`, 'busy')
     });
