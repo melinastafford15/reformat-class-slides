@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coherence — turn slides into one unified study guide</title>
+<meta name="description" content="Upload your class slides, PDFs, and notes. Coherence reformats them into one unified, hierarchical study guide — no more piecing scattered slides back together.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧩</text></svg>">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a href="#top" class="brand">🧩 Coherence</a>
+    <a class="gh-link" href="https://github.com/" id="repoLink" target="_blank" rel="noopener">View source on GitHub</a>
+  </div>
+</header>
+
+<main id="top">
+
+  <section class="hero">
+    <div class="hero-inner">
+      <span class="eyebrow">Free · runs entirely in your browser</span>
+      <h1>Slides scatter your notes.<br>This puts them back together.</h1>
+      <p class="hero-sub">
+        Lecture slides split every idea across a dozen disconnected boxes with no hierarchy.
+        Coherence reads your uploaded slides, PDFs, and notes, and rebuilds them into <strong>one
+        unified, consistently structured study guide</strong> — decision trees and formula flow for
+        quantitative courses, comparison cards and labeled concepts for theory courses.
+      </p>
+      <div class="hero-actions">
+        <a href="#tool" class="btn btn-primary">Reformat my material ↓</a>
+        <a href="#how" class="btn btn-ghost">How it works</a>
+      </div>
+      <div class="feature-pills">
+        <span class="pill">One coherent structure, not 40 disconnected slides</span>
+        <span class="pill">Automatically math-type or info-type formatting</span>
+        <span class="pill">Your files never leave your browser</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="tool" class="tool-section">
+    <div class="card tool-card">
+      <h2 class="card-title">1. Add your material</h2>
+      <p class="card-hint">PowerPoint (.pptx), PDF, Word (.docx), images, or plain text/markdown. Add as many as you need for one unit or lecture.</p>
+
+      <div id="dropzone" class="dropzone" tabindex="0">
+        <div class="dropzone-icon">📎</div>
+        <div><strong>Drop files here</strong> or click to browse</div>
+        <div class="dropzone-sub">.pptx · .pdf · .docx · .png/.jpg · .txt/.md</div>
+      </div>
+      <input id="fileInput" type="file" multiple hidden
+        accept=".pptx,.pdf,.docx,.txt,.md,.png,.jpg,.jpeg,.gif,.webp">
+
+      <div id="fileList" class="file-list"></div>
+
+      <details class="paste-details">
+        <summary>Or paste text instead</summary>
+        <textarea id="pasteText" class="paste-area" placeholder="Paste lecture notes, transcripts, or any other text here…"></textarea>
+      </details>
+
+      <h2 class="card-title with-margin">2. Settings</h2>
+      <div class="settings-grid">
+        <label class="field">
+          <span class="field-label">OpenAI API key <span class="req">required</span></span>
+          <input id="apiKey" type="password" placeholder="sk-…" autocomplete="off">
+        </label>
+        <label class="field checkbox-field">
+          <input id="rememberKey" type="checkbox">
+          <span>Remember key on this device (stored in local browser storage only)</span>
+        </label>
+
+        <label class="field">
+          <span class="field-label">Model</span>
+          <input id="modelInput" list="modelList" value="gpt-4o" placeholder="gpt-4o">
+          <datalist id="modelList">
+            <option value="gpt-4o">
+            <option value="gpt-4o-mini">
+            <option value="gpt-4.1">
+            <option value="gpt-4.1-mini">
+          </datalist>
+        </label>
+
+        <label class="field">
+          <span class="field-label">Course type</span>
+          <select id="courseType">
+            <option value="auto">Auto-detect</option>
+            <option value="math">Math-type (formulas, decision paths)</option>
+            <option value="info">Info-type (concepts, comparisons)</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span class="field-label">Course name / code <span class="opt">optional</span></span>
+          <input id="courseName" type="text" placeholder="Ex: ST 260 — Statistics">
+        </label>
+
+        <label class="field">
+          <span class="field-label">Professor <span class="opt">optional</span></span>
+          <input id="professor" type="text" placeholder="Ex: Dr. Smith">
+        </label>
+
+        <label class="field field-wide">
+          <span class="field-label">Tool context <span class="opt">optional</span></span>
+          <input id="toolContext" type="text" placeholder="Ex: Excel only, no calculator needed">
+        </label>
+      </div>
+
+      <button id="generateBtn" class="btn btn-primary btn-generate">Reformat my material</button>
+      <div id="status" class="status"></div>
+      <div id="warnings" class="warnings hidden"></div>
+    </div>
+
+    <div id="outputSection" class="card output-card hidden">
+      <div class="output-header">
+        <h2 class="card-title">3. Your unified guide</h2>
+        <div class="view-tabs">
+          <button type="button" class="view-tab active" data-view="preview">Preview</button>
+          <button type="button" class="view-tab" data-view="code">Code</button>
+        </div>
+      </div>
+      <iframe id="previewFrame" class="preview-frame" sandbox="allow-scripts" title="Generated study guide preview"></iframe>
+      <pre id="codeView" class="code-view hidden"></pre>
+      <div class="output-actions">
+        <button id="downloadBtn" class="btn btn-primary">Download HTML</button>
+        <button id="copyBtn" class="btn btn-ghost">Copy HTML</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="how" class="how-section">
+    <h2 class="section-title">How it works</h2>
+    <div class="how-grid">
+      <div class="how-step">
+        <div class="how-num">1</div>
+        <h3>Extraction happens in your browser</h3>
+        <p>Your .pptx, .pdf, and .docx files are parsed locally with JavaScript the moment you drop them in — nothing is uploaded anywhere at this step.</p>
+      </div>
+      <div class="how-step">
+        <div class="how-num">2</div>
+        <h3>Your key talks directly to OpenAI</h3>
+        <p>The extracted text (plus the reformatting rulebook) is sent straight from your browser to OpenAI's API using your own key. No server of ours ever sees your files or your key.</p>
+      </div>
+      <div class="how-step">
+        <div class="how-num">3</div>
+        <h3>You get one HTML study guide</h3>
+        <p>The result is a single self-contained HTML file — tabs, decision trees, or comparison cards depending on your course type — ready to open, download, or study from immediately.</p>
+      </div>
+    </div>
+    <p class="privacy-note">
+      This is a static site with no backend. It cannot see your API key or your files — they never pass through any server we control.
+      Standard OpenAI API usage charges from your own account apply per reformat.
+    </p>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <p>Built with the <a href="rulebook.md" target="_blank" rel="noopener">unified learning-guide rulebook</a> · open source, MIT licensed.</p>
+</footer>
+
+<!-- Extraction libraries (all client-side, no data sent to these CDNs beyond the library files themselves) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+</script>
+<script src="assets/extract.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
